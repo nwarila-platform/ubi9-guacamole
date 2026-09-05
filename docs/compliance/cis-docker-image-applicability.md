@@ -27,7 +27,6 @@ deployment-only items explicitly instead of inventing hidden benchmark text.
 | `SATISFIED_IMAGE_CONTROL` | The image or Dockerfile implements the control directly and repo verification checks it. |
 | `SATISFIED_REPO_CONTROL` | The repo implements the control through manifest, workflow, or release evidence requirements. |
 | `SATISFIED_REPLACEMENT` | The original mechanism is obsolete or not appropriate, and the repo uses a stronger modern replacement. |
-| `PENDING_RELEASE_CONTROL` | The retained workflow defines the control, but its publishing path is disabled pending replacement. |
 | `DEPLOYMENT_SPECIFIC` | The control is real, but baking it into this generic application image would either lose functionality or misrepresent deployment health. |
 
 ## Summary
@@ -36,8 +35,7 @@ deployment-only items explicitly instead of inventing hidden benchmark text.
 | --- | ---: |
 | `SATISFIED_IMAGE_CONTROL` | 6 |
 | `SATISFIED_REPO_CONTROL` | 4 |
-| `SATISFIED_REPLACEMENT` | 0 |
-| `PENDING_RELEASE_CONTROL` | 1 |
+| `SATISFIED_REPLACEMENT` | 1 |
 | `DEPLOYMENT_SPECIFIC` | 1 |
 | Total | 12 |
 
@@ -49,7 +47,7 @@ deployment-only items explicitly instead of inventing hidden benchmark text.
 | CIS-Docker-4.2 | Image | Ensure that containers use only trusted base images. | `SATISFIED_REPO_CONTROL` | The final image is `FROM` Red Hat `ubi-micro`; both the `ubi-minimal` builder and the `ubi-micro` runtime are pinned by digest, RPM inputs are installed through GPG-checked microdnf, and the application artifacts come from official upstream release URLs pinned by digest. |
 | CIS-Docker-4.3 | Image | Ensure that unnecessary packages are not installed in the container. | `SATISFIED_IMAGE_CONTROL` | The final rootfs carries only the application binary, its shared libraries, and the CA bundle at `/etc/pki/tls/certs/ca-bundle.crt`; runtime hardening asserts no shell, no dnf/microdnf/rpm/yum, no curl/wget, and no package-manager state beyond the read-only rpmdb preserved at `/var/lib/rpm`. |
 | CIS-Docker-4.4 | Repo/Release | Ensure images are scanned and rebuilt to include security patches. | `SATISFIED_REPO_CONTROL` | The repo has scheduled security workflow coverage and Renovate configuration that rebuilds from digest-pinned UBI 9 bases. Full release evidence still depends on publishing a registry image with SBOM, provenance, signature, and vulnerability scan records. |
-| CIS-Docker-4.5 | Release | Ensure Content Trust for Docker is enabled. | `PENDING_RELEASE_CONTROL` | Docker documents Docker Content Trust as retired for hardened images. The inherited `publish-image.yaml` retains keyless Cosign/Sigstore image-signing and attestation steps, but its publishing path is disabled pending replacement by the redesigned pipeline: only manual dispatch is enabled, and the publish job requires a `push` event. |
+| CIS-Docker-4.5 | Release | Ensure Content Trust for Docker is enabled. | `SATISFIED_REPLACEMENT` | Docker documents Docker Content Trust as retired for hardened images. The retained `publish-image.yaml` defines the modern replacement (keyless Sigstore signing and attestation of the pushed digest). Its publishing path is currently disabled — the workflow accepts only manual dispatch and the publish job requires a `push` event — so no image is released from this repository at all; nothing unsigned can be published until the replacement pipeline lands and re-enables release. |
 | CIS-Docker-4.6 | Deployment | Ensure that HEALTHCHECK instructions have been added to container images. | `DEPLOYMENT_SPECIFIC` | A generic application healthcheck can misreport readiness, TLS, listener, or auth-mode states and can break deployments that use orchestrator-specific readiness probes. The image stays neutral; the deployment must define application-aware health semantics. |
 | CIS-Docker-4.7 | Dockerfile | Ensure update instructions are not used alone in Dockerfiles. | `SATISFIED_IMAGE_CONTROL` | Any `microdnf update` occurs in the `ubi-minimal` builder stage in the same `RUN` block as `microdnf install`, followed by `microdnf clean all` and cache removal; no package manager reaches the final `ubi-micro` image. |
 | CIS-Docker-4.8 | Image | Ensure setuid and setgid permissions are removed. | `SATISFIED_IMAGE_CONTROL` | `tests/runtime-hardening.sh` exports the rootfs and rejects setuid or setgid regular files. |
