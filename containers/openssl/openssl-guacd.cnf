@@ -1,0 +1,53 @@
+# Purpose: OpenSSL configuration for ubi9-guacamole (guacd). Activates the Red Hat OpenSSL FIPS provider
+# (present and self-tested) together with the base, default and legacy providers WITHOUT the approved-mode
+# restriction ("default_properties = fips=yes") that the parent image enforces. RDP licensing (MS-RDPELE)
+# may need RC4 and MD5, which FreeRDP 2.11.7 fetches from the default/legacy providers. "?fips=yes" is a
+# PREFERENCE, not a requirement: algorithms the FIPS provider implements are taken from it, all others fall
+# through to default/legacy. This is NOT FIPS approved mode; see SECURITY.md.
+# Role: config
+# NOTE: OpenSSL conf accepts '#' comments; keep the header above `config_diagnostics = 1`.
+
+config_diagnostics = 1
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+alg_section = algorithm_sect
+ssl_conf = ssl_module
+
+[provider_sect]
+fips = fips_sect
+base = base_sect
+default = default_sect
+legacy = legacy_sect
+
+[fips_sect]
+activate = 1
+
+[base_sect]
+activate = 1
+
+[default_sect]
+activate = 1
+
+[legacy_sect]
+activate = 1
+
+[algorithm_sect]
+default_properties = ?fips=yes
+
+[ssl_module]
+system_default = crypto_policy
+
+[crypto_policy]
+# Verbatim body of /usr/share/crypto-policies/DEFAULT/opensslcnf.txt from
+# crypto-policies-20260224-1.gitea0f072.el9_8.noarch (the parent image deletes /usr/share/crypto-policies,
+# so the RHEL default .include of this policy is a dangling symlink there; the policy is embedded here instead).
+CipherString = @SECLEVEL=2:kEECDH:kRSA:kEDH:kPSK:kDHEPSK:kECDHEPSK:kRSAPSK:-aDSS:-3DES:!DES:!RC4:!RC2:!IDEA:-SEED:!eNULL:!aNULL:!MD5:-SHA384:-CAMELLIA:-ARIA:-AESCCM8
+Ciphersuites = TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_SHA256
+TLS.MinProtocol = TLSv1.2
+TLS.MaxProtocol = TLSv1.3
+DTLS.MinProtocol = DTLSv1.2
+DTLS.MaxProtocol = DTLSv1.2
+SignatureAlgorithms = ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224
+Groups = *X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:ffdhe6144:ffdhe8192

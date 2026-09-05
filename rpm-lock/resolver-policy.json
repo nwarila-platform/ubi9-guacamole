@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "roots": [
+    "freerdp-libs-2:2.11.7-12.el9",
+    "libwinpr-2:2.11.7-12.el9"
+  ],
+  "walk_parent_requirements": false,
+  "parent_floor_packages": 15,
+  "accepted_candidate_arches": {
+    "amd64": ["x86_64", "noarch"],
+    "arm64": ["aarch64", "noarch"]
+  },
+  "install_weak_deps": false,
+  "rich_dependencies": "feed expressions unchanged to the solver and enforce again in the RPM transaction",
+  "origin_preference": ["ubi9", "centos-stream"],
+  "tie_break": ["preferred origin", "full NEVRA", "URL"],
+  "ambiguity": "fail",
+  "parent_name_overlap": "fail",
+  "output_locale": "C"
+}
