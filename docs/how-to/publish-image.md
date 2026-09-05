@@ -35,16 +35,16 @@ in a real repository. The SLSA generator reusable is the exception: keep it on
 the semantic-version tag shown below and keep the tag-integrity guard beside it.
 The version comments on SHA-pinned actions are orientation labels, not pins.
 
+This skeleton reflects the inherited workflow as it is retained in this
+repository while publishing is disabled pending replacement by the redesigned
+pipeline. Its only trigger is manual dispatch. A dispatch runs the tag-integrity
+job, but the publish job is skipped because it still requires a `push` event.
+
 ```yaml
 name: Publish image
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -198,9 +198,10 @@ jobs:
 
 ## Verification
 
-After the workflow publishes an image, verify the evidence from a clean
-checkout with the exact SLSA generator identity. The reference contract is
-kept in [`../reference/slsa-l3-provenance.md`](../reference/slsa-l3-provenance.md).
+When an operational release pipeline publishes an image, verify the evidence
+from a clean checkout with the exact SLSA generator identity. The reference
+contract is kept in
+[`../reference/slsa-l3-provenance.md`](../reference/slsa-l3-provenance.md).
 
 ```sh
 cosign verify-attestation --type slsaprovenance <image>@<digest> \
