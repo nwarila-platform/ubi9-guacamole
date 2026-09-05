@@ -1,9 +1,12 @@
 # SLSA L3 Provenance Verification
 
-Published images use the SLSA container generator reusable workflow to write a
-cosign OCI attestation for the pushed image digest. The caller workflow builds
-and pushes the image, captures the digest, and passes the image name plus digest
-to the trusted generator.
+The inherited publish implementation is retained in
+`.github/workflows/publish-image.yaml`, but its publishing path is disabled
+pending replacement by the redesigned pipeline. The workflow accepts only
+manual dispatches, which run the tag-integrity job; the publish job remains
+ineligible because it requires a `push` event. When operational, the retained
+implementation uses the SLSA container generator reusable workflow to write a
+cosign OCI attestation for the pushed image digest.
 
 ## Trusted Generator
 
@@ -16,9 +19,10 @@ to the trusted generator.
 | OIDC issuer | `https://token.actions.githubusercontent.com` |
 
 The workflow reference is tag-pinned because the upstream generator resolves its
-builder binary from a semantic-version tag. The publish workflow therefore runs
-a tag-integrity guard on pull requests and publish pushes, and fails if
-`refs/tags/v2.1.0` no longer resolves to the audited commit above.
+builder binary from a semantic-version tag. In the workflow's current disabled
+state, a manual dispatch runs the tag-integrity guard and fails if
+`refs/tags/v2.1.0` no longer resolves to the audited commit above. Pull requests
+and pushes do not trigger this workflow.
 
 ## Verify Contract
 

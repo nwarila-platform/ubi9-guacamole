@@ -1,12 +1,8 @@
 name: Publish image
 
+# This workflow is the inherited template publisher, disabled 2026-09-05 pending replacement by the TMPL01A/GUAC01D pipeline because it publishes tags before verification (template audit D-01).
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
