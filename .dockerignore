@@ -1,6 +1,10 @@
-# Keep image build context explicit. Downstream source-built images should add
-# only the minimum source paths their builder stage needs.
-*
-
-!dist/
-!dist/**
+.git
+.github
+.agents
+.codex
+README.md
+BUILD-ARGS.md
+MIGRATION.md
+READY
+__pycache__
+*.py[cod]

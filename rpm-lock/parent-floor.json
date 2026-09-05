@@ -1,0 +1,59 @@
+{
+  "parent": {
+    "repository": "ghcr.io/nwarila/ubi9-base-micro",
+    "digest": "sha256:215c082aa0718d2ee45caa17ae08dc6127685f1b83f3a2d0993e271ca4debbda",
+    "children": {
+      "amd64": "sha256:5f0d5643a93b964b04fd22708f9fe031fa5ce7666c480c74daa29dc6123e7548",
+      "arm64": "sha256:c6a65e344d326cf404563075b45481b85360eb4a90fe6599117cd38c8818124c"
+    },
+    "revision": "ec6e6fa6634c3b571bfd9a6a207ad0b810a7c831",
+    "rpmdb_sha256": {
+      "amd64": "c9c38089affec24723d6b3d6c062b1744d08167933a213d382aafceb948d631e",
+      "arm64": "40343814fc1a56d5a4c462f9655700d70db0609294ddb6f20b44d28e82aba6bf"
+    },
+    "floor": {
+      "amd64": [
+        ["basesystem-11-13.el9.noarch", "01a59a06e36f02ce2d63c3ec66655bcf6c484e308f106d2ade807009f4b9215d"],
+        ["ca-certificates-2025.2.80_v9.0.305-91.el9.noarch", "7faef89b97f69ec4949eb5e6a173acc050237cf455ff961e54c55548634eae53"],
+        ["crypto-policies-20260224-1.gitea0f072.el9_8.noarch", "da81d7746eb8c31dbd5aec626c7bf34440bd4d4f2bce24135b36195d616cd2a7"],
+        ["filesystem-3.16-5.el9.x86_64", "f980a0c4132ddf30805e2897ae3728703122b7748dc335a1175cf0a8f7557084"],
+        ["glibc-2.34-274.el9_8.x86_64", "c970071cb076a8b5d94174908c9f85f73ec1601b467f098be8713c207bac22a4"],
+        ["glibc-common-2.34-274.el9_8.x86_64", "18643632765d294d1897d9b3fb56dd04d17a7374658dec5e694112d6a3a554d4"],
+        ["glibc-minimal-langpack-2.34-274.el9_8.x86_64", "0ca640bc73d81f177edabb202d28a003efb33b4b95cd8e805c9485d68b7ee40f"],
+        ["libgcc-11.5.0-14.el9.x86_64", "3e0524d697a67b3a8cdfe7bebef16df078e22936478003cb379e27feac8d645b"],
+        ["openssl-fips-provider-3.0.7-8.el9.x86_64", "f86bf87c2350f2568b1aed19ebef984421318ca4f09e270ff29fa79df88f7330"],
+        ["openssl-fips-provider-so-3.0.7-8.el9.x86_64", "98e6ea3febec52a090b05f00171516b0113478a8de1797424c7f9bd735607ce6"],
+        ["openssl-libs-1:3.5.5-5.el9_8.x86_64", "1bb0a914ac9fc24112fa082c579ffa4c4c7a182bd4a811090443f54bf97097c5"],
+        ["redhat-release-9.8-1.0.el9.x86_64", "1523660673834d25a029ced87ddf95c316a9e99e23f8ae0c4dc229266ad4d633"],
+        ["setup-2.13.7-10.el9.noarch", "89e9827ab6af5f378ce92fee0ce0d162fe071b03d77a95fa085e42bd44266773"],
+        ["tzdata-2026b-1.el9.noarch", "364d6616daca25bf6a6373c362e06a2c9ad4f008b85d7763e65b87a4c98b8b55"],
+        ["zlib-1.2.11-40.el9.x86_64", "5de8b0cf2f02f5f8a67b25f5f42a8d3af8392613eb27c1bb005ee1660064e489"]
+      ],
+      "arm64": [
+        ["basesystem-11-13.el9.noarch", "01a59a06e36f02ce2d63c3ec66655bcf6c484e308f106d2ade807009f4b9215d"],
+        ["ca-certificates-2025.2.80_v9.0.305-91.el9.noarch", "7faef89b97f69ec4949eb5e6a173acc050237cf455ff961e54c55548634eae53"],
+        ["crypto-policies-20260224-1.gitea0f072.el9_8.noarch", "da81d7746eb8c31dbd5aec626c7bf34440bd4d4f2bce24135b36195d616cd2a7"],
+        ["filesystem-3.16-5.el9.aarch64", "a0b9fe77691ee7d0a10ac9f5990fe8d96c2893e633ffaa3978f18df687a8b401"],
+        ["glibc-2.34-274.el9_8.aarch64", "fae3c3dbdd6463ebec1f0e5f116c21006ff08f14d20ef14a5a68342ffdabc902"],
+        ["glibc-common-2.34-274.el9_8.aarch64", "c200090b280ed683831eab49b500e6371834d961df521cd1bd904f5140d539f6"],
+        ["glibc-minimal-langpack-2.34-274.el9_8.aarch64", "516a098c9d289e2e1195e99bf6ac64d6824569cac0ea205520e61154ed5b1f58"],
+        ["libgcc-11.5.0-14.el9.aarch64", "c9c962cc94aa0d028f754fde65c724345895faf18a68624f3f00681f277f33b5"],
+        ["openssl-fips-provider-3.0.7-8.el9.aarch64", "be2ed40694dfea73b4c0542a65c812c40edcd3b398a9305747b8980d7040bcec"],
+        ["openssl-fips-provider-so-3.0.7-8.el9.aarch64", "93387b3c841e3c601275d58176f009eefdb01551e5d951d48be3a55b856e0449"],
+        ["openssl-libs-1:3.5.5-5.el9_8.aarch64", "3ad7be30a3d76330b5ecdfcc0b8a006ee05542cc74893eb1da6bbb61386d29bb"],
+        ["redhat-release-9.8-1.0.el9.aarch64", "128058a54d65a2786e914f365d41f977a32a8d8d0707b163bdadd614409d6e88"],
+        ["setup-2.13.7-10.el9.noarch", "89e9827ab6af5f378ce92fee0ce0d162fe071b03d77a95fa085e42bd44266773"],
+        ["tzdata-2026b-1.el9.noarch", "364d6616daca25bf6a6373c362e06a2c9ad4f008b85d7763e65b87a4c98b8b55"],
+        ["zlib-1.2.11-40.el9.aarch64", "ce3e70d97ade36e1065436a96516eeeb343c10db718d28b3150806f843d6cc44"]
+      ]
+    }
+  },
+  "fips": {
+    "module_version": "3.0.7-395c1a240fbfffd8",
+    "provider_nevra": "openssl-fips-provider-so-3.0.7-8.el9",
+    "fips_so_sha256": {
+      "amd64": "c197b6ddf74532f477bcb34e25b6e109491765d577b9fe1a4c4759239b6aae06",
+      "arm64": "669910b59bca2c9a9cf5a33d3e63e6d94224d2e3b0fecd259cd235c9cf9c71cd"
+    }
+  }
+}

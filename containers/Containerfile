@@ -1,0 +1,85 @@
+ARG BASE_MICRO_IMAGE=ghcr.io/nwarila/ubi9-base-micro@sha256:215c082aa0718d2ee45caa17ae08dc6127685f1b83f3a2d0993e271ca4debbda
+ARG UBI_MINIMAL_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal@sha256:7fbeae18dc9476399f565e68255f602a3374ea8614ba3d14843565131a13ff93
+ARG CS9_IMAGE=quay.io/centos/centos@sha256:d323b7623e947245a8eb506fbb0ad0e55eb2ae2d2407b66741a15f372caf9bdc
+ARG SOURCE_DATE_EPOCH=1704067200
+ARG BUILDER_PROVENANCE_SHA256=UNPROVEN
+
+FROM ${BASE_MICRO_IMAGE} AS parent-material
+
+FROM ${UBI_MINIMAL_IMAGE} AS a-build
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG TARGETARCH=amd64
+ARG SOURCE_DATE_EPOCH
+WORKDIR /workspace
+COPY containers/ containers/
+COPY inputs/ inputs/
+COPY tools/ tools/
+RUN cp -a /var/lib/rpm /var/lib/guac01-builder-base-rpmdb
+RUN microdnf --setopt=install_weak_deps=0 -y install \
+      bash curl-minimal ca-certificates python3 jq gzip tar cpio findutils diffutils \
+      binutils rpm-build rpmdevtools gnupg2 gcc-plugin-annobin redhat-rpm-config && \
+    rpm --import containers/keys/RPM-GPG-KEY-CentOS-Official && \
+    install -m 0644 containers/repos/cs9.repo /etc/yum.repos.d/guac01-cs9.repo && \
+    microdnf clean all
+RUN tools/fetch-inputs.sh "inputs/rpms.${TARGETARCH}.lock" \
+      "inputs/rpms.${TARGETARCH}.sources"
+RUN tools/build-a.sh "$TARGETARCH"
+
+FROM ${UBI_MINIMAL_IMAGE} AS c0-materialize
+COPY containers/openssl/openssl-guacd.cnf /c0/containers/openssl/openssl-guacd.cnf
+COPY containers/fips-status.json /c0/containers/fips-status.json
+COPY SECURITY.md /c0/SECURITY.md
+
+FROM ${UBI_MINIMAL_IMAGE} AS b-rootfs
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG TARGETARCH=amd64
+ARG SOURCE_DATE_EPOCH
+WORKDIR /workspace
+COPY rpm-lock/ rpm-lock/
+COPY tools/ tools/
+COPY --from=parent-material / /parent
+COPY --from=a-build /out /a
+COPY --from=c0-materialize /c0 /c0
+RUN microdnf --setopt=install_weak_deps=0 -y install \
+      bash jq findutils binutils tar gzip diffutils && microdnf clean all && \
+    tools/install-builder-bootstrap.sh "$TARGETARCH" /a/rpms && \
+    mkdir -p /usr/sbin && chroot_path="$(command -v chroot)" && \
+    if [[ "$chroot_path" != /usr/sbin/chroot ]]; then ln -sfn "$chroot_path" /usr/sbin/chroot; fi
+RUN tools/build-rootfs.sh "$TARGETARCH"
+
+FROM ${BASE_MICRO_IMAGE} AS c1-runtime
+ARG OCI_CREATED=1970-01-01T00:00:00Z
+ARG OCI_REVISION=UNPROVEN
+ARG OCI_VERSION=1.6.0
+ARG BASE_MICRO_IMAGE
+ARG UBI_MINIMAL_IMAGE
+ARG CS9_IMAGE
+ARG BUILDER_PROVENANCE_SHA256
+COPY --from=b-rootfs /rootfs/ /
+LABEL org.opencontainers.image.title="ubi9-guacamole" \
+      org.opencontainers.image.description="Apache Guacamole guacd 1.6.0, RDP only; FIPS provider present, approved mode not enforced" \
+      org.opencontainers.image.created="${OCI_CREATED}" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.version="${OCI_VERSION}" \
+      org.opencontainers.image.source="https://github.com/NWarila/ubi9-guacamole" \
+      io.nwarila.base.digest="${BASE_MICRO_IMAGE}" \
+      io.nwarila.assembler.digest="${UBI_MINIMAL_IMAGE}" \
+      io.nwarila.builder.cs9.declared-digest="${CS9_IMAGE}" \
+      io.nwarila.builder.provenance-sha256="${BUILDER_PROVENANCE_SHA256}" \
+      io.nwarila.guacamole.version="1.6.0" \
+      io.nwarila.freerdp.evr="2:2.11.7-12.el9" \
+      io.nwarila.freerdp.origin="centos-stream-9" \
+      org.nwarila.fips.cmvp.oe-validated="true" \
+      org.nwarila.fips.module-version="3.0.7-395c1a240fbfffd8" \
+      org.nwarila.fips.provider-nvr="openssl-fips-provider-so-3.0.7-8.el9" \
+      org.nwarila.fips.approved-mode="false" \
+      org.nwarila.fips.approved-mode.reason="RDP licensing (MS-RDPELE) can require RC4/MD5; see SECURITY.md"
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    HOME=/home/nonroot \
+    OPENSSL_CONF=/etc/pki/tls/openssl-guacd.cnf \
+    OPENSSL_MODULES=/usr/lib64/ossl-modules
+WORKDIR /
+EXPOSE 4822
+USER 65532:65532
+ENTRYPOINT ["/usr/sbin/guacd", "-f", "-b", "0.0.0.0", "-l", "4822"]
+CMD []
