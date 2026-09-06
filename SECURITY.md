@@ -54,7 +54,12 @@ The Path B section above replaces item 2 in full. The remaining items preserve t
 7. **"Nightly" means rebuilt nightly, republished when the package set, the source revision, or the base image changes.** Green nights with no new digest are normal and expected.
 8. **"Zero human maintenance" holds in steady state only.** A pipeline change fans out as one human-gated pull request per image repo, because the reusable workflow is SHA-pinned and bot PRs are never auto-merged.
 9. **We do not claim reproducible builds.** We set `SOURCE_DATE_EPOCH` for legible diffs; no independent rebuilder verifies our output.
-10. **We do not claim a SLSA level.** We publish SLSA v1.0 provenance.
+10. **We publish SLSA v1.0 build provenance, but assert no SLSA build level.** The image index
+    references BuildKit attestation manifests containing an SPDX SBOM and a max-mode in-toto
+    provenance statement with predicate type `https://slsa.dev/provenance/v1` for its
+    `linux/amd64` image manifest. Inspect them with `docker buildx imagetools inspect`. Cosign signs
+    the root image-index digest. We do not self-assert a SLSA build level; evaluate the provenance
+    against the SLSA track requirements yourself.
 
 ## Network and runtime boundary
 

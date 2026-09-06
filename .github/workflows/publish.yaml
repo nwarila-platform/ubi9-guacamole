@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       IMAGE: ghcr.io/nwarila-platform/ubi9-guacamole
@@ -31,6 +32,9 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435  # v3.11.1
+        with:
+          version: v0.36.1
+          driver-opts: image=moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
 
       - name: Log in to GHCR
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1  # v3.5.0
@@ -39,7 +43,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and push
+      - name: Build and push untagged candidate
         id: build
         shell: bash
         run: |
@@ -47,8 +51,8 @@ jobs:
           docker buildx build \
             --file containers/Containerfile \
             --platform linux/amd64 \
-            --provenance=false \
-            --sbom=false \
+            --provenance=mode=max,version=v1 \
+            --sbom=true \
             --build-arg "BASE_MICRO_IMAGE=ghcr.io/nwarila/ubi9-base-micro@sha256:215c082aa0718d2ee45caa17ae08dc6127685f1b83f3a2d0993e271ca4debbda" \
             --build-arg "UBI_MINIMAL_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal@sha256:7fbeae18dc9476399f565e68255f602a3374ea8614ba3d14843565131a13ff93" \
             --build-arg "CS9_IMAGE=quay.io/centos/centos@sha256:d323b7623e947245a8eb506fbb0ad0e55eb2ae2d2407b66741a15f372caf9bdc" \
@@ -58,10 +62,8 @@ jobs:
             --build-arg "OCI_CREATED=${OCI_CREATED}" \
             --build-arg "OCI_REVISION=${GITHUB_SHA}" \
             --build-arg "OCI_VERSION=1.6.0" \
-            --tag "${IMAGE}:latest" \
-            --tag "${IMAGE}:${SHORT_SHA}" \
+            --output "type=image,name=${IMAGE},push=true,push-by-digest=true" \
             --metadata-file "$metadata_file" \
-            --push \
             .
           digest=$(jq -er '."containerimage.digest"' "$metadata_file")
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
@@ -74,9 +76,88 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+        with:
+          cosign-release: 'v3.1.3'
 
       - name: Sign pushed digest
         shell: bash
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Verify signature (fail closed)
+        shell: bash
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign verify "${IMAGE}@${DIGEST}" \
+            --certificate-identity "https://github.com/nwarila-platform/ubi9-guacamole/.github/workflows/publish.yaml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify SBOM and provenance are attached and describe this image
+        shell: bash
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          manifest="$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --format '{{ json .Manifest }}')"
+          sbom="$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --format '{{ json .SBOM }}')"
+          prov="$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --format '{{ json .Provenance }}')"
+
+          test "$(jq -er '.digest' <<<"$manifest")" = "$DIGEST" \
+            || { echo "inspected root digest does not match build output"; exit 1; }
+          platform_digest="$(
+            jq -er '[.manifests[]? | select(.platform.os == "linux" and .platform.architecture == "amd64")] |
+              if length == 1 then .[0].digest else error("expected exactly one linux/amd64 manifest") end' \
+              <<<"$manifest"
+          )"
+          jq -e --arg platform_digest "$platform_digest" '
+            any(.manifests[]?;
+              ((.annotations."vnd.docker.reference.type" //
+                .annotations."com.docker.reference.type" // "") == "attestation-manifest") and
+              ((.annotations."vnd.docker.reference.digest" //
+                .annotations."com.docker.reference.digest" // "") == $platform_digest))
+          ' <<<"$manifest" >/dev/null \
+            || { echo "no attestation manifest is linked to linux/amd64"; exit 1; }
+
+          jq -e '
+            ((.SPDX.spdxVersion | type) == "string") and
+            ((.SPDX.packages | type) == "array")
+          ' <<<"$sbom" >/dev/null \
+            || { echo "no valid SPDX SBOM attached"; exit 1; }
+          jq -e --arg sha "$GITHUB_SHA" '
+            ((.SLSA.buildDefinition | type) == "object") and
+            ((.SLSA.runDetails | type) == "object") and
+            ((.SLSA.buildDefinition.internalParameters.buildConfig.llbDefinition | type) == "array") and
+            ((.SLSA.buildDefinition.internalParameters.buildConfig.llbDefinition | length) > 0) and
+            (.SLSA.runDetails.metadata.buildkit_completeness.request == true) and
+            (.SLSA.buildDefinition.externalParameters.request.args["build-arg:OCI_REVISION"] == $sha)
+          ' <<<"$prov" >/dev/null \
+            || { echo "provenance is absent, not SLSA v1/max, or not for this revision"; exit 1; }
+
+          # Exact RPM names. BuildKit's syft scanner writes the RPM Name to SPDX .name and the EVR to
+          # versionInfo, so no version suffix appears; exact match avoids both the openssl-fips-provider
+          # and freerdp-libs-debuginfo false-positives.
+          for pkg in guacamole-server freerdp-libs openssl-libs; do
+            jq -e --arg pkg "$pkg" '
+              any(.SPDX.packages[]?; (.name? // "") == $pkg)
+            ' <<<"$sbom" >/dev/null \
+              || { echo "SBOM missing package: $pkg"; exit 1; }
+          done
+          echo "SPDX SBOM and max-mode SLSA v1 provenance validated."
+
+      - name: Publish verified tags
+        shell: bash
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${SHORT_SHA}" \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}@${DIGEST}"
+          for tag in "${SHORT_SHA}" latest; do
+            published="$(docker buildx imagetools inspect "${IMAGE}:${tag}" --format '{{ json .Manifest }}' | jq -er '.digest')"
+            test "$published" = "$DIGEST" \
+              || { echo "${tag} does not resolve to verified digest"; exit 1; }
+          done
